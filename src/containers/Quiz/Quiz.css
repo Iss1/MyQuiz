@@ -76,3 +76,9 @@
 .QuizResult-question{
     margin-bottom: 20px;
 }
+
+.Quiz-otherResultsButton {
+    width: fit-content;
+    margin-left: auto;
+    margin-top: 15px;
+}

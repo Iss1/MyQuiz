@@ -5,25 +5,12 @@ import './Quiz.css';
 export default function QuizResult(props) {
 	const [showAnswers, setShowAnswers] = useState(false);
 
-	const { quiz, points, answers } = props;
-	const countPoints = () => {
-		
-		const pointsCounter = new Map();
-		points.forEach(p => {
-			pointsCounter.set(p, pointsCounter.get(p) ? pointsCounter.get(p) + 1 : 1 );
-		});
-		let resKey;
-		let resValue = 0;
-		pointsCounter.forEach((value, key) => {
-			if (!resKey || value > resValue) {
-				resKey = key;
-				resValue = value;
-			}
-		});
-		return resKey;
+	const { quiz, answers, resultKey } = props;
+	
+	const result = quiz.results.find(res => res.result === resultKey);
+	if (!result) {
+		return <div></div>
 	}
-
-	const result = quiz.results.find(res => res.result === countPoints());
 
 	return <div>
 		<div>{result.title}</div>
@@ -32,7 +19,7 @@ export default function QuizResult(props) {
 		</div>
 		<div className="QuizResult-content">{result.content}</div>
 
-		{!showAnswers && <Button variant="dark" onClick={() => setShowAnswers(true)}>Show answers</Button>}
+		{!showAnswers && <Button variant="dark" onClick={() => setShowAnswers(true)} style={{marginRight: "15px"}}>Show answers</Button>}
 		{showAnswers && <div className="Quiz-questions">
 			Your anwsers:
 			{quiz.questions.map((question, questionIndex) => <div key={'question' + questionIndex} className="QuizResult-question">

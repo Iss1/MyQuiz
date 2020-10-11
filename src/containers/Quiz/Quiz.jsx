@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Form, Col } from 'react-bootstrap';
+import { Button, Form, Col, Modal, Table } from 'react-bootstrap';
 import './Quiz.css';
 import { FaArrowLeft, FaArrowRight } from 'react-icons/fa';
 import QuizResult from './QuizResult';
@@ -9,6 +9,8 @@ const VIEW = {
 	QUESTIONS: 'questions',
 	RESULT: 'result'
 }
+
+const API_PATH = 'https://webapipde.azurewebsites.net/api/quiz';
 
 export default function Quiz(props) {
 	const quiz = props.quiz;
@@ -20,7 +22,32 @@ export default function Quiz(props) {
 	const [notAnswered, setNotAnswered] = useState(null);
 	const [view, setView] = useState(VIEW.QUESTIONS);
 	const [validated, setValidated] = useState(false);
-	const [name, setName] = useState(false);
+	const [resultKey, setResultKey] = useState('');
+	const [otherResults, setOtherResults] = useState([]);
+	const [showOthers, setShowOthers] = useState(false);
+
+	const countPoints = () => {
+		
+		const pointsCounter = new Map();
+		points.forEach(p => {
+			pointsCounter.set(p, pointsCounter.get(p) ? pointsCounter.get(p) + 1 : 1 );
+		});
+		let resKey;
+		let resValue = 0;
+		pointsCounter.forEach((value, key) => {
+			if (!resKey || value > resValue) {
+				resKey = key;
+				resValue = value;
+			}
+		});
+		return resKey;
+	}
+
+	const parseDate = (dbDate) => {
+		const date = new Date(dbDate);
+		date.setHours( date.getHours() + 2 );
+		return date.toLocaleString();
+	}
 
 	const handleSubmit = (event) => {
 		const form = event.currentTarget;
@@ -40,8 +67,33 @@ export default function Quiz(props) {
 			setNotAnswered(null);
 			setFinishWarning(false);
 		} else {
-			setView(VIEW.RESULT);
-			setName(form.name.value);
+			event.preventDefault();
+			event.stopPropagation();
+			const resultKey = countPoints();
+			setResultKey(resultKey);
+			const data = {
+				'name': form.name.value,
+				'result': resultKey,
+				'answsers': anwsers
+			}
+			fetch(API_PATH, {
+				method: 'POST',
+				headers: {
+				  'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(data)
+				})
+				.then(response => {
+					if (!response.ok) {
+						throw new Error('Network response was not ok');
+					}
+					return response.json();
+				})
+				.then(data => {
+					console.log(data.massage);
+					setView(VIEW.RESULT);
+				})
+				.catch(error => console.log(error));
 		}
 	}
 
@@ -55,6 +107,11 @@ export default function Quiz(props) {
 
 	return (
 		<div className="Quiz-window">
+			<Button variant="dark" className="Quiz-otherResultsButton" onClick={() => {
+				fetch(API_PATH)
+					.then(resposne => resposne.json())
+					.then(data => {setOtherResults(data); setShowOthers(true)});
+			}}>Show other results</Button>
 			<div className="Quiz-title">
 				{quiz.title}
 			</div>
@@ -64,6 +121,7 @@ export default function Quiz(props) {
 				points={points}
 				answers={anwsers}
 				doAgain={doQuizAgain}
+				resultKey={resultKey}
 			/>}
 
 			{view === VIEW.QUESTIONS && <div className="Quiz-questions">
@@ -91,6 +149,7 @@ export default function Quiz(props) {
 									newAnwsers[currentQuestion] = index;
 									setAnwsers(newAnwsers);
 								}}
+								defaultChecked={anwsers[currentQuestion] === index}
 								className="Quiz-questionButtons"
 							/>
 						)}
@@ -121,6 +180,36 @@ export default function Quiz(props) {
 				</div>
 			</div>}
 			
+			{showOthers && <Modal size="lg" show={showOthers} onHide={() => setShowOthers(false)}>
+				<Modal.Header closeButton>
+					<Modal.Title>History of results</Modal.Title>
+				</Modal.Header>
+
+				<Modal.Body>
+					<Table striped bordered hover>
+						<thead>
+							<tr>
+								<th>Name</th>
+								<th>Result</th>
+								<th>Date</th>
+							</tr>
+						</thead>
+						<tbody>
+							{[...otherResults].reverse().map((res, index) => 
+								<tr key={'row'+index}>
+									<td>{res.name}</td>
+									<td>{res.result}</td>
+									<td>{parseDate(res.time)}</td>
+								</tr>
+							)}
+						</tbody>
+					</Table>
+				</Modal.Body>
+
+				<Modal.Footer>
+					<Button variant="secondary" onClick={() => setShowOthers(false)}>Close</Button>
+				</Modal.Footer>
+			</Modal>}
 		</div>
 	);
 }
